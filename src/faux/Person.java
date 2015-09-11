@@ -1,13 +1,13 @@
 package faux;
 
 import java.math.BigInteger;
-
 import java.security.MessageDigest;
-
 import java.util.Date;
-
 import java.util.Random;
 
+import lombok.ToString;
+
+@ToString
 public class Person
 {
 	public static void main(String[] args)
@@ -49,11 +49,16 @@ public class Person
 		s = s << 8 | ((int) (seven2fourteen[4]) & 0xff);
 		s = s << 8 | ((int) (seven2fourteen[5]) & 0xff);
 		s = s << 8 | ((int) (seven2fourteen[6]) & 0xff);
-		int c = s % 10000;
+		s&=0x7fFFffFF;
+		String c = ""+ s % 10000;
 		s /= 10000;
-		int b = s % 100;
+		String b = ""+ s % 100;
 		s /= 100;
-		int a = s % 1000;
+		String a = ""+ s % 1000;
+		while (a.length()<3) a="0"+a;
+		while (b.length()<2) b="0"+b;
+		while (c.length()<4) c="0"+c;
+
 		return a + "-" + b + "-" + c;
 	}
 

@@ -28,7 +28,7 @@ public class Year
 	public static Date makeDOB(int i, int d)
 	{
 		d += 238;
-		System.out.println("i:" + i + ", d:" + d);
+//		System.out.println("i:" + i + ", d:" + d);
 		int a = 2015 - age(i);
 		Calendar c = Calendar.getInstance();
 		c.set(Calendar.YEAR, a);

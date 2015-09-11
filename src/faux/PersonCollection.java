@@ -2,14 +2,28 @@ package faux;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.ConcurrentModificationException;
 import java.util.Iterator;
 import java.util.List;
 
 public class PersonCollection implements Collection<Person>
 {
 
-	static List<String> givenNames=new ArrayList<String>();
-	static List<String> surNames=new ArrayList<String>();
+	public PersonCollection(){this(new ArrayList<String>(),new ArrayList<String>());}
+	
+	public PersonCollection(List<String> fnames, List<String> lnames)
+	{
+		setNames(fnames, lnames);
+	}
+
+	public void setNames(List<String> givenNames, List<String> surNames)
+	{
+		this.givenNames=givenNames;
+		this.surNames=surNames;
+	}
+
+	private List<String> givenNames=new ArrayList<String>();
+	private List<String> surNames=new ArrayList<String>();
 	
 	@Override
 	public int size(){return givenNames.size()*surNames.size();}
@@ -40,6 +54,9 @@ public class PersonCollection implements Collection<Person>
 
 	private class PersonIterator implements Iterator<Person>
 	{
+		List<String> cached1=givenNames;
+		List<String> cached2=surNames;
+		
 		Iterator<String> x = surNames.iterator();
 		Iterator<String> y = givenNames.iterator();
 
@@ -49,12 +66,14 @@ public class PersonCollection implements Collection<Person>
 		@Override
 		public boolean hasNext()
 		{
+			conmodcheck();
 			return x.hasNext()||y.hasNext();
 		}
 
 		@Override
 		public Person next()
 		{
+			conmodcheck();
 			if (!x.hasNext())
 			{
 				yName=y.next();
@@ -65,6 +84,12 @@ public class PersonCollection implements Collection<Person>
 			p.setGivenName(yName);
 			p.setSurName(xName);
 			return p;
+		}
+
+		private void conmodcheck()
+		{
+			if (cached1!=givenNames) throw new ConcurrentModificationException();
+			if (cached2!=surNames) throw new ConcurrentModificationException();
 		}
 		
 	}
