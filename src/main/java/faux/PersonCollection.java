@@ -91,6 +91,9 @@ public class PersonCollection implements Collection<Person>
 			if (cached1!=givenNames) throw new ConcurrentModificationException();
 			if (cached2!=surNames) throw new ConcurrentModificationException();
 		}
+
+		@Override
+		public void remove(){throw new UnsupportedOperationException();}
 		
 	}
 	
