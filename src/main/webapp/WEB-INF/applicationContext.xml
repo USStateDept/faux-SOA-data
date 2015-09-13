@@ -11,9 +11,14 @@
 
 	<import resource="classpath:META-INF/cxf/cxf.xml" />
 
+	<bean id="JaxWsWebServicePublisherBeanPostProcessor" class="org.apache.cxf.jaxws.spring.JaxWsWebServicePublisherBeanPostProcessor" />
+	
 	<bean id="helloWorldImpl" class="faux.ws.HelloWorldImpl" />
+	<bean id="personImpl" class="faux.ws.PersonServiceImpl" />
 
 	<jaxws:endpoint id="helloWordEndpoint" implementor="#helloWorldImpl" address="/hello_world" />
+
+	<jaxws:endpoint id="personEndpoint" implementor="#personImpl" address="/person" />
 	
 	<!-- <jaxws:endpoint serviceName="HelloWorld" /> -->
 	<!-- <jaxws:endpoint id="greeter" implementor="org.apache.hello_soap_http.GreeterImpl" 
