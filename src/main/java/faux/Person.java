@@ -5,9 +5,12 @@ import java.security.MessageDigest;
 import java.util.Date;
 import java.util.Random;
 
+import lombok.Data;
+import lombok.Getter;
 import lombok.ToString;
 
 @ToString
+@Data
 public class Person
 {
 	public static void main(String[] args)
