@@ -81,7 +81,8 @@ public class PersonCollection implements Collection<Person>
 			}
 			xName=x.next();
 			Person p = new Person();
-			p.setGivenName(yName);
+			p.setGivenName(yName.substring(1));
+			p.setGender("M".equalsIgnoreCase(yName.substring(0, 1)));
 			p.setSurName(xName);
 			return p;
 		}

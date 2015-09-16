@@ -1,5 +1,7 @@
 package faux.ws;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
@@ -13,10 +15,30 @@ import faux.PersonCollection;
 public class PersonServiceImpl implements PersonService
 {
 	private static String[] lnamesa={"Pyeron", "Li", "Smith", "Klien", "Barker"};
-	private static String[] fnamesa={"Jason", "Joseph", "Ning", "Bob"};
+	private static String[] fnamesa={"MJason", "MJoseph", "FNing", "MBob"};
 	
-	private static List<String> lnames=Arrays.asList(lnamesa);
-	private static List<String> fnames=Arrays.asList(fnamesa);
+	private static List<String> lnames;
+	private static List<String> fnames;
+
+	static
+	{
+		try
+		{
+			//http://stackoverflow.com/questions/7785973/loading-files-in-jar-in-tomcat-using-getresourceasstream
+			InputStream lin = Thread.currentThread().getContextClassLoader().getResourceAsStream("faux/ws/lnames.txt");
+			InputStream fin = Thread.currentThread().getContextClassLoader().getResourceAsStream("faux/ws/fnames.txt");
+			
+			
+			lnames=new FileArray(lin);
+			fnames=new FileArray(fin);
+		}
+		catch (IOException e)
+		{
+			e.printStackTrace();
+			lnames=Arrays.asList(new String[]{e.toString()});
+			fnames=lnames;
+		}
+	}
 	
 	PersonCollection pc=new PersonCollection(fnames, lnames);
 

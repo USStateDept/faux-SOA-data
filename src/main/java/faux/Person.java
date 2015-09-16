@@ -23,6 +23,7 @@ public class Person
 		System.out.println(BigInteger.probablePrime(512, p.getRandom()));
 	}
 
+	boolean gender;
 	static MessageDigest md;
 	String givenName;
 	String surName;
