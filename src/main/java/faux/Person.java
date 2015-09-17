@@ -6,7 +6,6 @@ import java.util.Date;
 import java.util.Random;
 
 import lombok.Data;
-import lombok.Getter;
 import lombok.ToString;
 
 @ToString
@@ -29,6 +28,28 @@ public class Person
 	String surName;
 	String middleName;
 	String ssn = null;
+	String username=null;
+	String email=null;
+	
+	public String getUsername()
+	{
+		if (username==null)
+		{
+			String pend=getGivenName()+"."+getSurName()+".test";
+			pend=pend.toLowerCase();
+			username=pend.replaceAll("[^a-z0-9\\.]", "");			
+		}
+		return username;
+	}
+
+	public String getEmail()
+	{
+		if (email==null)
+		{
+			email=getUsername()+"@ad.poc.local";
+		}
+		return email;
+	}
 
 	public Random getRandom()
 	{
