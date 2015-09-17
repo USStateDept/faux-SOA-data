@@ -24,6 +24,11 @@
   		<version>1.16.4</version>
   	</dependency>
   	<dependency>
+  		<groupId>net._01001111</groupId>
+  		<artifactId>jlorem</artifactId>
+  		<version>1.4.0.1</version>
+  	</dependency>
+  	<dependency>
   		<groupId>org.apache.cxf</groupId>
   		<artifactId>cxf-rt-frontend-jaxws</artifactId>
   		<version>3.1.2</version>
