@@ -1,3 +1,4 @@
 _remote.repositories
 resolver-status.properties
 *.tmp
+*.lastUpdated
