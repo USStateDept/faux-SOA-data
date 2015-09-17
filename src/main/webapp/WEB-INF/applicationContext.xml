@@ -16,10 +16,6 @@
 	<bean id="helloWorldImpl" class="faux.ws.HelloWorldImpl" />
 	<bean id="personImpl" class="faux.ws.PersonServiceImpl" />
 	<bean id="loremImpl" class="faux.ws.LoremServiceImpl" />
-
-	<jaxws:endpoint id="helloWordEndpoint" implementor="#helloWorldImpl" address="/hello_world" />
-
-	<jaxws:endpoint id="personEndpoint" implementor="#personImpl" address="/person" />
 	
 	<!-- <jaxws:endpoint serviceName="HelloWorld" /> -->
 	<!-- <jaxws:endpoint id="greeter" implementor="org.apache.hello_soap_http.GreeterImpl" 
