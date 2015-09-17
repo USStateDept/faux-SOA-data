@@ -2,17 +2,19 @@ package faux.ws;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
 import javax.jws.WebService;
 
+import org.springframework.stereotype.Component;
+
 import faux.Person;
 import faux.PersonCollection;
 
 @WebService(serviceName="person", targetNamespace="gov.state")
+@Component
 public class PersonServiceImpl implements PersonService
 {
 	private static String[] lnamesa={"Pyeron", "Li", "Smith", "Klien", "Barker"};

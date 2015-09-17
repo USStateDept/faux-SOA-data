@@ -1,12 +1,13 @@
 package faux.ws;
 
-import java.util.Map;
-
 import javax.jws.WebService;
+
+import org.springframework.stereotype.Component;
 
 //@WebService(endpointInterface = "faux.ws.HelloWorld", serviceName = "HelloWorld")
 
 @WebService(serviceName = "HelloWorld")
+@Component
 public class HelloWorldImpl implements HelloWorld
 {
 

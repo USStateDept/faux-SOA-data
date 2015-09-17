@@ -16,15 +16,6 @@
 
 	<bean id="JaxWsWebServicePublisherBeanPostProcessor" class="org.apache.cxf.jaxws.spring.JaxWsWebServicePublisherBeanPostProcessor" />
 	
-	<bean id="helloWorldImpl" class="faux.ws.HelloWorldImpl" />
-	<bean id="personImpl" class="faux.ws.PersonServiceImpl" />
-	<bean id="loremImpl" class="faux.ws.LoremServiceImpl" />
-
 	<context:component-scan base-package="faux.ws" />
 
-	
-	<!-- <jaxws:endpoint serviceName="HelloWorld" /> -->
-	<!-- <jaxws:endpoint id="greeter" implementor="org.apache.hello_soap_http.GreeterImpl" 
-		address="/Greeter1" /> <jaxrs:server id="greeterRest" serviceClass="org.apache.hello_soap_http.GreeterImpl" 
-		address="/GreeterRest" /> -->
 </beans>

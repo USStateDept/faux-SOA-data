@@ -8,7 +8,10 @@ import javax.jws.WebService;
 
 import net._01001111.text.LoremIpsum;
 
+import org.springframework.stereotype.Component;
+
 @WebService(serviceName="lorem", targetNamespace="gov.state")
+@Component
 public class LoremServiceImpl implements LoremService
 {
 	public List<String> getText(long seed)
