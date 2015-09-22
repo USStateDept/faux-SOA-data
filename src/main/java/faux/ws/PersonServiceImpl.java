@@ -17,9 +17,6 @@ import faux.PersonCollection;
 @Component
 public class PersonServiceImpl implements PersonService
 {
-	private static String[] lnamesa={"Pyeron", "Li", "Smith", "Klien", "Barker"};
-	private static String[] fnamesa={"MJason", "MJoseph", "FNing", "MBob"};
-	
 	private static List<String> lnames;
 	private static List<String> fnames;
 

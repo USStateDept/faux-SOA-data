@@ -12,6 +12,7 @@ import java.util.Random;
  */
 public class FauxRandom extends Random
 {
+	private static final long serialVersionUID = 1L;
 	private byte[] seed;
 	private int seedpos = 0;
 

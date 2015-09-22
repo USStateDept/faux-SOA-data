@@ -1,10 +1,7 @@
 package faux.ws;
 
-import java.util.Map;
-
 import javax.jws.WebParam;
 import javax.jws.WebService;
-import javax.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
 
 @WebService
 public interface HelloWorld
