@@ -1,16 +1,46 @@
 package faux.ws;
 
+import java.io.StringWriter;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.List;
 import java.util.logging.Level;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.wsdl.extensions.http.HTTPAddress;
+import javax.xml.namespace.QName;
+import javax.xml.stream.XMLOutputFactory;
+import javax.xml.stream.XMLStreamException;
+import javax.xml.stream.XMLStreamReader;
+import javax.xml.stream.XMLStreamWriter;
+import javax.xml.transform.Source;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerException;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.stax.StAXResult;
+import javax.xml.transform.stax.StAXSource;
+import javax.xml.transform.stream.StreamSource;
 
 import lombok.extern.java.Log;
 
+import org.apache.cxf.annotations.SchemaValidation.SchemaValidationType;
+import org.apache.cxf.helpers.ServiceUtils;
 import org.apache.cxf.interceptor.Fault;
+import org.apache.cxf.interceptor.Interceptor;
+import org.apache.cxf.interceptor.InterceptorChain;
+import org.apache.cxf.message.Exchange;
 import org.apache.cxf.message.Message;
+import org.apache.cxf.message.MessageContentsList;
 import org.apache.cxf.phase.AbstractPhaseInterceptor;
 import org.apache.cxf.phase.Phase;
+import org.apache.cxf.service.model.BindingOperationInfo;
+import org.apache.cxf.service.model.EndpointInfo;
+import org.apache.cxf.service.model.MessageInfo;
+import org.apache.cxf.service.model.MessagePartInfo;
+import org.apache.cxf.service.model.OperationInfo;
+import org.apache.cxf.service.model.ServiceInfo;
+import org.apache.cxf.service.model.ServiceModelUtil;
+import org.apache.cxf.staxutils.DepthXMLStreamReader;
+import org.apache.cxf.staxutils.StaxUtils;
+import org.apache.cxf.wsdl.interceptors.DocLiteralInInterceptor;
 
 @Log
 public class Int extends AbstractPhaseInterceptor<Message>
@@ -21,56 +51,368 @@ public class Int extends AbstractPhaseInterceptor<Message>
 		log.log(Level.INFO,"Constructed");
 	}
 
+	
+    private DepthXMLStreamReader getXMLStreamReader(Message message) {
+        XMLStreamReader xr = message.getContent(XMLStreamReader.class);
+        if (xr == null) {
+            return null;
+        }
+        if (xr instanceof DepthXMLStreamReader) {
+            return (DepthXMLStreamReader) xr;
+        }
+        DepthXMLStreamReader dr = new DepthXMLStreamReader(xr);
+        message.setContent(XMLStreamReader.class, dr);
+        return dr;
+    }
+
+    private MessageInfo getMessageInfo(Message message, BindingOperationInfo operation, boolean requestor) {
+        MessageInfo msgInfo;
+        OperationInfo intfOp = operation.getOperationInfo();
+        if (requestor) {
+            msgInfo = intfOp.getOutput();
+            message.put(MessageInfo.class, intfOp.getOutput());
+        } else {
+            msgInfo = intfOp.getInput();
+            message.put(MessageInfo.class, intfOp.getInput());
+        }
+        return msgInfo;
+    }
+
+    
+    /**
+     * Returns a BindingOperationInfo if the operation is indentified as 
+     * a wrapped method,  return null if it is not a wrapped method 
+     * (i.e., it is a bare method)
+     * 
+     * @param exchange
+     * @param name
+     * @param client
+     */
+	private BindingOperationInfo supergetBindingOperationInfo(Exchange exchange, QName name, boolean client)
+	{
+		String local = name.getLocalPart();
+		if (client && local.endsWith("Response"))
+		{
+			local = local.substring(0, local.length() - 8);
+		}
+
+		// TODO: Allow overridden methods.
+		BindingOperationInfo bop = ServiceModelUtil.getOperation(exchange, local);
+
+		if (bop != null)
+		{
+			exchange.put(BindingOperationInfo.class, bop);
+		}
+		return bop;
+	}
+    
+	private BindingOperationInfo getBindingOperationInfo(Exchange exchange, QName name, boolean client)
+	{
+		BindingOperationInfo bop = ServiceModelUtil.getOperationForWrapperElement(exchange, name, client);
+		if (bop == null)
+		{
+			bop = supergetBindingOperationInfo(exchange, name, client);
+		}
+
+		if (bop != null)
+		{
+			exchange.put(BindingOperationInfo.class, bop);
+		}
+		return bop;
+	}
+    
+    private void setOperationSchemaValidation(Message message) {
+        SchemaValidationType validationType = ServiceUtils.getSchemaValidationType(message);
+        message.put(Message.SCHEMA_VALIDATION_ENABLED, validationType);
+    }
+    
+
+	private MessageInfo setMessage(Message message, BindingOperationInfo operation, boolean requestor,
+			ServiceInfo si, MessageInfo msgInfo)
+	{
+		message.put(MessageInfo.class, msgInfo);
+
+		Exchange ex = message.getExchange();
+
+		ex.put(BindingOperationInfo.class, operation);
+		ex.setOneWay(operation.getOperationInfo().isOneWay());
+
+		// Set standard MessageContext properties required by JAX_WS, but not
+		// specific to JAX_WS.
+		boolean synthetic = Boolean.TRUE.equals(operation.getProperty("operation.is.synthetic"));
+		if (!synthetic)
+		{
+			message.put(Message.WSDL_OPERATION, operation.getName());
+		}
+
+		// configure endpoint and operation level schema validation
+		setOperationSchemaValidation(message);
+
+		QName serviceQName = si.getName();
+		message.put(Message.WSDL_SERVICE, serviceQName);
+
+		QName interfaceQName = si.getInterface().getName();
+		message.put(Message.WSDL_INTERFACE, interfaceQName);
+
+		EndpointInfo endpointInfo = ex.getEndpoint().getEndpointInfo();
+		QName portQName = endpointInfo.getName();
+		message.put(Message.WSDL_PORT, portQName);
+
+		URI wsdlDescription = endpointInfo.getProperty("URI", URI.class);
+		if (wsdlDescription == null)
+		{
+			String address = endpointInfo.getAddress();
+			try
+			{
+				wsdlDescription = new URI(address + "?wsdl");
+			}
+			catch (URISyntaxException e)
+			{
+				// do nothing
+			}
+			endpointInfo.setProperty("URI", wsdlDescription);
+		}
+		message.put(Message.WSDL_DESCRIPTION, wsdlDescription);
+
+		return msgInfo;
+	}
+
+	private MessageInfo setMessage(Message message, BindingOperationInfo operation, boolean requestor, ServiceInfo si)
+	{
+		MessageInfo msgInfo = getMessageInfo(message, operation, requestor);
+		return setMessage(message, operation, requestor, si, msgInfo);
+	}
+	
+	
 	@Override
 	public void handleMessage(Message message) throws Fault
 	{
-		log.log(Level.INFO,"message={0}",message);
+		log.log(Level.FINE,"message={0}",message);
 		
-		//Sep 27, 2015 8:27:43 AM faux.ws.Int handleMessage
-		//INFO: message={
-		//org.apache.cxf.message.MessageFIXED_PARAMETER_ORDER=false, 
-		//http.base.path=http://tomcat.poc.statedeptproject.com/faux-0.0.1-SNAPSHOT, 
-		//HTTP.REQUEST=org.apache.catalina.connector.RequestFacade@5927e0e2, 
-		//org.apache.cxf.transport.Destination=org.apache.cxf.transport.servlet.ServletDestination@36e19ac2, 
-		//HTTP.CONFIG=org.apache.catalina.core.StandardWrapperFacade@4678b9c, 
-		//org.apache.cxf.binding.soap.SoapVersion=org.apache.cxf.binding.soap.Soap11@1bac0a76, 
-		//org.apache.cxf.message.Message.QUERY_STRING=null, 
-		//org.apache.cxf.message.Message.ENCODING=UTF-8, 
-		//HTTP.CONTEXT=org.apache.catalina.core.ApplicationContextFacade@7d6ac911, 
-		//Content-Type=text/xml;charset=UTF-8, 
-		//org.apache.cxf.security.SecurityContext=org.apache.cxf.transport.http.AbstractHTTPDestination$2@3d0b5fd5, 
-		//org.apache.cxf.message.Message.PROTOCOL_HEADERS=
-		//{
-		// accept-encoding=[gzip,deflate],
-		// Cache-Control=[max-age=259200], 
-		// connection=[keep-alive], 
-		// Content-Length=[298], 
-		// content-type=[text/xml;charset=UTF-8], 
-		// host=[tomcat.poc.statedeptproject.com], 
-		// SOAPAction=[""], 
-		// user-agent=[Apache-HttpClient/4.1.1 (java 1.5)], 
-		// Via=[1.1 gateway.1.internal.pdinc.us:3128 (squid/2.6.STABLE21)], 
-		// X-Forwarded-For=[192.168.4.12]}, 
-		// org.apache.cxf.request.url=http://tomcat.poc.statedeptproject.com/faux-0.0.1-SNAPSHOT/cxf/services/echo, 
-		// Accept=null, 
-		// org.apache.cxf.request.uri=/faux-0.0.1-SNAPSHOT/cxf/services/echo, 
-		// org.apache.cxf.message.Message.PATH_INFO=/faux-0.0.1-SNAPSHOT/cxf/services/echo, 
-		// org.apache.cxf.transport.https.CertConstraints=null, 
-		// HTTP.RESPONSE=org.apache.catalina.connector.ResponseFacade@7fe423ef, 
-		// org.apache.cxf.headers.Header.list=[], 
-		// org.apache.cxf.request.method=POST, 
-		// org.apache.cxf.async.post.response.dispatch=true, 
-		// org.apache.cxf.message.Message.IN_INTERCEPTORS=[org.apache.cxf.transport.https.CertConstraintsInterceptor@7334275a], 
-		// HTTP_CONTEXT_MATCH_STRATEGY=stem, 
-		// http.service.redirection=null, 
-		// org.apache.cxf.message.Message.BASE_PATH=/faux-0.0.1-SNAPSHOT/cxf/services/echo, 
-		// org.apache.cxf.configuration.security.AuthorizationPolicy=null
-		//}
+		InterceptorChain ic = message.getInterceptorChain();
+		for (Interceptor<? extends Message> i:ic)
+		{
+			log.log(Level.FINE,"Interceptor<? extends Message> i={0}",i);
+			if (i!=null && i instanceof DocLiteralInInterceptor)
+			{
+				log.log(Level.FINE,"FOUND IT!!!!!!!!!!!");
+				ic.remove(i);				
+			}
+		}
 		
-		HttpServletRequest req=(HttpServletRequest) message.get("HTTP.REQUEST");
-		log.log(Level.INFO,"request={0}",req);
+		
+		for (Class<?> c:message.getContentFormats())
+		{
+			log.log(Level.FINE,"Format:{0}",c);
+		}
+		
+		
+/*
+		InputStream is = message.getContent(InputStream.class);
+        if (is != null) {
+            CachedOutputStream bos = new CachedOutputStream();
+            try {
+                IOUtils.copy(is, bos);
 
+                bos.flush();
+                is.close();
+                message.setContent(InputStream.class, bos.getInputStream());
+                bos.close();
+                String soapMessage = new String(bos.getBytes());
+                
+                log.log(Level.INFO,"SOAP:\n{0}",soapMessage);
+                
+            } catch (IOException e) {
+                throw new Fault(e);
+            }
+        }
 		
+*/		
+        if (isGET(message) && message.getContent(List.class) != null) {
+            log.log(Level.FINE, "BareInInterceptor skipped in HTTP GET method");
+            return;
+        }
+
+        DepthXMLStreamReader xmlReader = getXMLStreamReader(message);
+//        DataReader<XMLStreamReader> dr = getDataReader(message);
+        MessageContentsList parameters = new MessageContentsList();
+
+        Source source;
+        String xml;
+		try
+		{
+			TransformerFactory tf = TransformerFactory.newInstance();
+			Transformer t = tf.newTransformer();
+			source = new StAXSource(xmlReader);
+			StringWriter sw = new StringWriter();
+			XMLOutputFactory outputFactory = XMLOutputFactory.newInstance();
+			XMLStreamWriter xmlStreamWriter;
+			xmlStreamWriter = outputFactory.createXMLStreamWriter(sw);
+			StAXResult result = new StAXResult(xmlStreamWriter);
+			t.transform(source, result);
+			xml = sw.toString();
+			log.log(Level.INFO,"XML=\n{0}",xml);
+			
+			source = new StreamSource(new java.io.StringReader(xml));
+		}
+		catch (XMLStreamException | TransformerException e)
+		{
+			source=null;
+			xml=null;
+			log.log(Level.WARNING,"cant convert to sting",e);
+		}
+
+        Exchange exchange = message.getExchange();
+        BindingOperationInfo bop = exchange.getBindingOperationInfo();
+
+        boolean client = isRequestor(message);
+
+        //if body is empty and we have BindingOperationInfo, we do not need to match 
+        //operation anymore, just return
+        if (bop != null && !StaxUtils.toNextElement(xmlReader)) {
+            // body may be empty for partial response to decoupled request
+            return;
+        }
+
+//        Service service = ServiceModelUtil.getService(message.getExchange());
+        //bop = getBindingOperationInfo(xmlReader, exchange, bop, client);
+		bop = getBindingOperationInfo(exchange, new QName("http://ws.faux/", "echoXML"), client);
+
+        boolean forceDocLitBare = false;
+        if (bop != null && bop.getBinding() != null) {
+            forceDocLitBare = Boolean.TRUE.equals(bop.getBinding().getService().getProperty("soap.force.doclit.bare"));
+        }
+        
+//        Node v = message.getContent(org.w3c.dom.Node.class);
+//        log.log(Level.INFO,"Node class is:{0}",v!=null?v.getClass():null);
+        		
+        try {
+            if (!forceDocLitBare && bop != null && bop.isUnwrappedCapable()) {
+                ServiceInfo si = bop.getBinding().getService();
+                // Wrapped case
+                MessageInfo msgInfo = setMessage(message, bop, client, si);
+                //setDataReaderValidation(service, message, dr);
+                
+                // Determine if we should keep the parameters wrapper
+                if (true /*|| shouldWrapParameters(msgInfo, message)*/) {
+//                    QName startQName = xmlReader.getName();
+                    MessagePartInfo mpi = msgInfo.getFirstMessagePart();
+//                    if (!mpi.getConcreteName().equals(startQName)) {
+//                        throw new Fault("UNEXPECTED_WRAPPER_ELEMENT", log, null, startQName,
+//                                        mpi.getConcreteName());
+//                    }
+//                    //Object wrappedObject = dr.read(mpi, xmlReader);
+//                    //parameters.put(mpi, wrappedObject);
+                    parameters.put(mpi, xml);
+                } /*else {
+                    // Unwrap each part individually if we don't have a wrapper
+    
+                    bop = bop.getUnwrappedOperation();
+    
+                    msgInfo = setMessage(message, bop, client, si);
+                    List<MessagePartInfo> messageParts = msgInfo.getMessageParts();
+                    Iterator<MessagePartInfo> itr = messageParts.iterator();
+    
+                    // advance just past the wrapped element so we don't get
+                    // stuck
+                    if (xmlReader.getEventType() == XMLStreamConstants.START_ELEMENT) {
+                        StaxUtils.nextEvent(xmlReader);
+                    }
+    
+                    // loop through each child element
+                    //getPara(xmlReader, dr, parameters, itr, message);
+                }
+    
+*/
+        }/* else {
+                //Bare style
+                BindingMessageInfo msgInfo = null;
+
+    
+                Endpoint ep = exchange.getEndpoint();
+                ServiceInfo si = ep.getEndpointInfo().getService();
+                if (bop != null) { //for xml binding or client side
+                    if (client) {
+                        msgInfo = bop.getOutput();
+                    } else {
+                        msgInfo = bop.getInput();
+                        if (bop.getOutput() == null) {
+                            exchange.setOneWay(true);
+                        }
+                    }
+                    if (msgInfo == null) {
+                        return;
+                    }
+                    setMessage(message, bop, client, si, msgInfo.getMessageInfo());
+                }
+    
+                Collection<OperationInfo> operations = null;
+                operations = new ArrayList<OperationInfo>();
+                operations.addAll(si.getInterface().getOperations());
+    
+                if (xmlReader == null || !StaxUtils.toNextElement(xmlReader)) {
+                    // empty input
+                    getBindingOperationForEmptyBody(operations, ep, exchange);
+                    return;
+                }
+
+                //setDataReaderValidation(service, message, dr);
+                
+                int paramNum = 0;
+    
+                do {
+                    QName elName = xmlReader.getName();
+                    Object o = null;
+    
+                    MessagePartInfo p;
+                    if (!client && msgInfo != null && msgInfo.getMessageParts() != null 
+                        && msgInfo.getMessageParts().size() == 0) {
+                        //no input messagePartInfo
+                        return;
+                    }
+                    
+                    if (msgInfo != null && msgInfo.getMessageParts() != null 
+                        && msgInfo.getMessageParts().size() > 0) {
+                        if (msgInfo.getMessageParts().size() > paramNum) {
+                            p = msgInfo.getMessageParts().get(paramNum);
+                        } else {
+                            p = null;
+                        }
+                    } else {
+                        p = findMessagePart(exchange, operations, elName, client, paramNum, message);
+                    }
+                    
+                    if (!forceDocLitBare) {
+                        //Make sure the elName found on the wire is actually OK for 
+                        //the purpose we need it
+                        //validatePart(p, elName, message);
+                    }
+             
+//                    o = dr.read(p, xmlReader);
+                    o=source;
+                    if (true) return;
+                    if (forceDocLitBare && parameters.isEmpty()) {
+                        // webservice provider does not need to ensure size
+                        parameters.add(o);
+                    } else {
+                        parameters.put(p, o);
+                    }
+                    
+                    paramNum++;
+                    if (message.getContent(XMLStreamReader.class) == null || o == xmlReader) {
+                        xmlReader = null;
+                    }
+                } while (xmlReader != null && StaxUtils.toNextElement(xmlReader));
+    
+            }
+*/    
+            message.setContent(List.class, parameters);
+        } catch (Fault f) {
+            if (!isRequestor(message)) {
+                f.setFaultCode(Fault.FAULT_CODE_CLIENT);
+            }
+            throw f;
+        }
 		
 	}
 
