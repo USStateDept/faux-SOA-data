@@ -6,7 +6,7 @@ import org.springframework.stereotype.Component;
 
 //@WebService(endpointInterface = "faux.ws.HelloWorld", serviceName = "HelloWorld")
 
-@WebService(serviceName = "HelloWorld")
+@WebService(serviceName = "HelloWorld", targetNamespace = "gov.state")
 @Component
 public class HelloWorldImpl implements HelloWorld
 {
