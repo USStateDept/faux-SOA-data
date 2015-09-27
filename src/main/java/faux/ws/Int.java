@@ -207,27 +207,6 @@ public class Int extends AbstractPhaseInterceptor<Message>
 		}
 		
 		
-/*
-		InputStream is = message.getContent(InputStream.class);
-        if (is != null) {
-            CachedOutputStream bos = new CachedOutputStream();
-            try {
-                IOUtils.copy(is, bos);
-
-                bos.flush();
-                is.close();
-                message.setContent(InputStream.class, bos.getInputStream());
-                bos.close();
-                String soapMessage = new String(bos.getBytes());
-                
-                log.log(Level.INFO,"SOAP:\n{0}",soapMessage);
-                
-            } catch (IOException e) {
-                throw new Fault(e);
-            }
-        }
-		
-*/		
         if (isGET(message) && message.getContent(List.class) != null) {
             log.log(Level.FINE, "BareInInterceptor skipped in HTTP GET method");
             return;
@@ -275,7 +254,6 @@ public class Int extends AbstractPhaseInterceptor<Message>
         }
 
 //        Service service = ServiceModelUtil.getService(message.getExchange());
-        //bop = getBindingOperationInfo(xmlReader, exchange, bop, client);
 		bop = getBindingOperationInfo(exchange, new QName("http://ws.faux/", "echoXML"), client);
 
         boolean forceDocLitBare = false;
@@ -283,129 +261,16 @@ public class Int extends AbstractPhaseInterceptor<Message>
             forceDocLitBare = Boolean.TRUE.equals(bop.getBinding().getService().getProperty("soap.force.doclit.bare"));
         }
         
-//        Node v = message.getContent(org.w3c.dom.Node.class);
-//        log.log(Level.INFO,"Node class is:{0}",v!=null?v.getClass():null);
         		
         try {
-            if (!forceDocLitBare && bop != null && bop.isUnwrappedCapable()) {
                 ServiceInfo si = bop.getBinding().getService();
                 // Wrapped case
                 MessageInfo msgInfo = setMessage(message, bop, client, si);
                 //setDataReaderValidation(service, message, dr);
                 
                 // Determine if we should keep the parameters wrapper
-                if (true /*|| shouldWrapParameters(msgInfo, message)*/) {
-//                    QName startQName = xmlReader.getName();
                     MessagePartInfo mpi = msgInfo.getFirstMessagePart();
-//                    if (!mpi.getConcreteName().equals(startQName)) {
-//                        throw new Fault("UNEXPECTED_WRAPPER_ELEMENT", log, null, startQName,
-//                                        mpi.getConcreteName());
-//                    }
-//                    //Object wrappedObject = dr.read(mpi, xmlReader);
-//                    //parameters.put(mpi, wrappedObject);
                     parameters.put(mpi, xml);
-                } /*else {
-                    // Unwrap each part individually if we don't have a wrapper
-    
-                    bop = bop.getUnwrappedOperation();
-    
-                    msgInfo = setMessage(message, bop, client, si);
-                    List<MessagePartInfo> messageParts = msgInfo.getMessageParts();
-                    Iterator<MessagePartInfo> itr = messageParts.iterator();
-    
-                    // advance just past the wrapped element so we don't get
-                    // stuck
-                    if (xmlReader.getEventType() == XMLStreamConstants.START_ELEMENT) {
-                        StaxUtils.nextEvent(xmlReader);
-                    }
-    
-                    // loop through each child element
-                    //getPara(xmlReader, dr, parameters, itr, message);
-                }
-    
-*/
-        }/* else {
-                //Bare style
-                BindingMessageInfo msgInfo = null;
-
-    
-                Endpoint ep = exchange.getEndpoint();
-                ServiceInfo si = ep.getEndpointInfo().getService();
-                if (bop != null) { //for xml binding or client side
-                    if (client) {
-                        msgInfo = bop.getOutput();
-                    } else {
-                        msgInfo = bop.getInput();
-                        if (bop.getOutput() == null) {
-                            exchange.setOneWay(true);
-                        }
-                    }
-                    if (msgInfo == null) {
-                        return;
-                    }
-                    setMessage(message, bop, client, si, msgInfo.getMessageInfo());
-                }
-    
-                Collection<OperationInfo> operations = null;
-                operations = new ArrayList<OperationInfo>();
-                operations.addAll(si.getInterface().getOperations());
-    
-                if (xmlReader == null || !StaxUtils.toNextElement(xmlReader)) {
-                    // empty input
-                    getBindingOperationForEmptyBody(operations, ep, exchange);
-                    return;
-                }
-
-                //setDataReaderValidation(service, message, dr);
-                
-                int paramNum = 0;
-    
-                do {
-                    QName elName = xmlReader.getName();
-                    Object o = null;
-    
-                    MessagePartInfo p;
-                    if (!client && msgInfo != null && msgInfo.getMessageParts() != null 
-                        && msgInfo.getMessageParts().size() == 0) {
-                        //no input messagePartInfo
-                        return;
-                    }
-                    
-                    if (msgInfo != null && msgInfo.getMessageParts() != null 
-                        && msgInfo.getMessageParts().size() > 0) {
-                        if (msgInfo.getMessageParts().size() > paramNum) {
-                            p = msgInfo.getMessageParts().get(paramNum);
-                        } else {
-                            p = null;
-                        }
-                    } else {
-                        p = findMessagePart(exchange, operations, elName, client, paramNum, message);
-                    }
-                    
-                    if (!forceDocLitBare) {
-                        //Make sure the elName found on the wire is actually OK for 
-                        //the purpose we need it
-                        //validatePart(p, elName, message);
-                    }
-             
-//                    o = dr.read(p, xmlReader);
-                    o=source;
-                    if (true) return;
-                    if (forceDocLitBare && parameters.isEmpty()) {
-                        // webservice provider does not need to ensure size
-                        parameters.add(o);
-                    } else {
-                        parameters.put(p, o);
-                    }
-                    
-                    paramNum++;
-                    if (message.getContent(XMLStreamReader.class) == null || o == xmlReader) {
-                        xmlReader = null;
-                    }
-                } while (xmlReader != null && StaxUtils.toNextElement(xmlReader));
-    
-            }
-*/    
             message.setContent(List.class, parameters);
         } catch (Fault f) {
             if (!isRequestor(message)) {
