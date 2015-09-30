@@ -9,6 +9,9 @@
 		<listener-class>org.springframework.web.context.ContextLoaderListener</listener-class>
 	</listener>
 	
+	<listener>
+		<listener-class>faux.config.JMSContextListenerClass</listener-class>
+	</listener>
 	
 	<servlet>
    		<servlet-name>CXFServlet</servlet-name>
