@@ -35,9 +35,25 @@ public class Person
 	{
 		if (username==null)
 		{
-			String pend=getGivenName()+"."+getSurName()+".test";
+			String gn=getGivenName();
+			String sn=getSurName();
+			String pend;
+			pend=gn+"."+sn+".test";
+			pend=pend.replaceAll("[^a-z0-9\\.]", "");
+			while (pend.length()>20 && gn.length()>1)
+			{
+				gn=gn.substring(0,gn.length()-1);
+				pend=gn+"."+sn+".test";
+				pend=pend.replaceAll("[^a-z0-9\\.]", "");
+			}			
+			while (pend.length()>20 && sn.length()>1)
+			{
+				sn=sn.substring(0,sn.length()-1);
+				pend=gn+"."+sn+".test";
+				pend=pend.replaceAll("[^a-z0-9\\.]", "");
+			}			
 			pend=pend.toLowerCase();
-			username=pend.replaceAll("[^a-z0-9\\.]", "");			
+			username=pend;			
 		}
 		return username;
 	}
