@@ -47,4 +47,14 @@ public class PersonServiceImpl implements PersonService
 		return pc;
 	}
 
+	public Collection<Person> getPersonsSmaller(int recordLimit)
+	{
+		return pc.slice(recordLimit);
+	}
+	public Collection<Person> getADPersons()
+	{
+		return ADPersonServiceImpl.adUSers;
+	}
+	
+	
 }

@@ -10,4 +10,7 @@ import faux.Person;
 public interface PersonService
 {
 	public Collection<Person> getPersons();
+	public Collection<Person> getPersonsSmaller(int recordLimit);
+	public Collection<Person> getADPersons();
+	
 }

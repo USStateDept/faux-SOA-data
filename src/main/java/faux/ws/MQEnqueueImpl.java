@@ -49,8 +49,16 @@ public class MQEnqueueImpl implements MQEnqueue
 	{
 		long docId;
 		
+		/*
 		@Getter(onMethod=@__({ @XmlElementWrapper(namespace="http://ws.faux/"),@XmlElement(name="P",namespace="http://ws.faux/")}))
+		*/
 		List<String> getTextResponse;
+		@XmlElementWrapper(namespace="http://ws.faux/")
+		@XmlElement(name="P",namespace="http://ws.faux/")
+		public List<String> getGetTextResponse() {
+			return getTextResponse;
+		}
+		
 	}
 	
 	public static void main(String[] args) throws JAXBException
